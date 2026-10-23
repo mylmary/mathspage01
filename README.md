@@ -1,11 +1,8 @@
 
-# Interactive Quiz Learning App
+## Mathspage01
 
 A web application designed to help teachers prepare and publish quizzes and give students a place to access and answer them.
 
-## Screenshots
-
-Add screenshots below to show how the application looks and works.
 
 ### 1. Role Selection
 
@@ -19,7 +16,6 @@ Choose between the student and teacher sections.
 The student interface for accessing and answering quizzes.
 
 <img width="720" height="1600" alt="Screenshot_2026-10-23-12-57-35-835_com android chrome" src="https://github.com/user-attachments/assets/6b31193d-7918-4514-98d2-5c3f286c1acb" />
-
 <img width="720" height="1600" alt="Screenshot_2026-10-23-12-57-47-954_com android chrome" src="https://github.com/user-attachments/assets/353daf95-85d6-468d-b85e-15c7701669e3" />
 
 
@@ -106,12 +102,6 @@ npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-## Live Demo
-
-**Live application:** <your-vercel-deployment-url>
-
-Replace the placeholder above with your deployed Vercel URL.
 
 ## Project Status
 
