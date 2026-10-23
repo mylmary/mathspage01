@@ -65,6 +65,13 @@ description: "Explore how water flows after a barrier is suddenly removed.",
 topic: "Free-surface flow",
 icon: "🌊",
 },
+{
+number: "09",
+title: "Magic Fluids",
+route: "/physics/magic-fluids",
+description: "Create swirling fluid patterns and explore how forces and obstacles change the flow.",
+  topic: "Interactive fluid dynamics",
+},
 ];
 
 export default function PhysicsPage() {
