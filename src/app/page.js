@@ -1,332 +1,529 @@
 
 import Link from "next/link";
 
+const experiments = [
+  {
+    number: "01",
+    title: "Flow Lines",
+    description: "See how fluid moves around objects and through a flow field.",
+    topic: "Fluid motion",
+    route: "/physics/flow-lines",
+    color: "bg-sky-50",
+    accent: "#0284c7",
+    visual: "flow",
+  },
+  {
+    number: "02",
+    title: "Sod Shock Tube",
+    description: "Watch pressure waves travel through gas at different states.",
+    topic: "Compressible flow",
+    route: "/physics/sod-shock-tube",
+    color: "bg-orange-50",
+    accent: "#ea580c",
+    visual: "shock",
+  },
+  {
+    number: "03",
+    title: "Dam Break",
+    description: "Release a wall of water and observe the resulting wave.",
+    topic: "Free-surface flow",
+    route: "/physics/dam-break",
+    color: "bg-cyan-50",
+    accent: "#0891b2",
+    visual: "dam",
+  },
+];
+
+function FlowPreview() {
+  return (
+    <svg
+      viewBox="0 0 440 290"
+      className="h-full w-full"
+      role="img"
+      aria-label="Animated fluid streamlines passing around an obstacle"
+    >
+      <defs>
+        <linearGradient id="flowGradient" x1="0" x2="1">
+          <stop offset="0%" stopColor="#38bdf8" />
+          <stop offset="100%" stopColor="#2563eb" />
+        </linearGradient>
+      </defs>
+
+      {[55, 85, 115, 145, 175, 205, 235].map((y) => (
+        <g key={y}>
+          <path
+            d={`M 10 ${y} C 100 ${y}, 115 ${y}, 145 ${y} C 175 ${y}, 180 ${y - 35}, 220 ${y - 35} S 300 ${y}, 430 ${y}`}
+            fill="none"
+            stroke="url(#flowGradient)"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeDasharray="7 8"
+          >
+            <animate
+              attributeName="stroke-dashoffset"
+              from="0"
+              to="-60"
+              dur="2s"
+              repeatCount="indefinite"
+            />
+          </path>
+        </g>
+      ))}
+
+      <circle
+        cx="220"
+        cy="145"
+        r="34"
+        fill="#ffffff"
+        stroke="#64748b"
+        strokeWidth="2"
+      />
+      <circle cx="220" cy="145" r="5" fill="#94a3b8" />
+
+      <text x="20" y="25" fontSize="12" fill="#64748b">
+        FLOW DIRECTION →
+      </text>
+    </svg>
+  );
+}
+
+function ShockPreview() {
+  return (
+    <svg
+      viewBox="0 0 440 290"
+      className="h-full w-full"
+      role="img"
+      aria-label="Shock wave moving through a tube"
+    >
+      <rect
+        x="30"
+        y="82"
+        width="380"
+        height="112"
+        rx="12"
+        fill="#ffffff"
+        stroke="#cbd5e1"
+        strokeWidth="2"
+      />
+
+      <rect x="34" y="86" width="180" height="104" rx="8" fill="#fed7aa" />
+      <rect x="214" y="86" width="192" height="104" rx="8" fill="#bae6fd" />
+
+      <path
+        d="M214 86 V194"
+        stroke="#ea580c"
+        strokeWidth="4"
+        strokeDasharray="5 5"
+      >
+        <animate
+          attributeName="d"
+          values="M214 86 V194;M280 86 V194;M214 86 V194"
+          dur="4s"
+          repeatCount="indefinite"
+        />
+      </path>
+
+      {[0, 1, 2, 3, 4].map((i) => (
+        <g key={i}>
+          <circle
+            cx={65 + i * 29}
+            cy="125"
+            r="4"
+            fill="#c2410c"
+          />
+          <circle
+            cx={65 + i * 29}
+            cy="151"
+            r="4"
+            fill="#c2410c"
+          />
+          <circle
+            cx={250 + i * 29}
+            cy="125"
+            r="4"
+            fill="#0369a1"
+          />
+          <circle
+            cx={250 + i * 29}
+            cy="151"
+            r="4"
+            fill="#0369a1"
+          />
+        </g>
+      ))}
+
+      <text x="70" y="62" fontSize="13" fill="#c2410c">
+        High pressure
+      </text>
+      <text x="270" y="62" fontSize="13" fill="#0369a1">
+        Low pressure
+      </text>
+      <text x="135" y="225" fontSize="12" fill="#64748b">
+        Pressure wave travels through the tube
+      </text>
+    </svg>
+  );
+}
+
+function DamPreview() {
+  return (
+    <svg
+      viewBox="0 0 440 290"
+      className="h-full w-full"
+      role="img"
+      aria-label="Water flowing from a reservoir after a dam is removed"
+    >
+      <path
+        d="M25 75 H185 V205 H25 Z"
+        fill="#67e8f9"
+        opacity="0.8"
+      />
+
+      <path
+        d="M185 75 V205"
+        stroke="#64748b"
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+
+      <path
+        d="M190 155 C230 150 245 185 280 190 S350 200 410 200 L410 225 L190 225 Z"
+        fill="#22d3ee"
+        opacity="0.85"
+      >
+        <animate
+          attributeName="d"
+          values="
+            M190 155 C230 150 245 185 280 190 S350 200 410 200 L410 225 L190 225 Z;
+            M190 155 C230 145 245 160 280 175 S350 185 410 190 L410 225 L190 225 Z;
+            M190 155 C230 150 245 185 280 190 S350 200 410 200 L410 225 L190 225 Z
+          "
+          dur="3s"
+          repeatCount="indefinite"
+        />
+      </path>
+
+      {[0, 1, 2, 3].map((i) => (
+        <circle
+          key={i}
+          cx={220 + i * 42}
+          cy={180 + (i % 2) * 12}
+          r="4"
+          fill="#0284c7"
+        >
+          <animate
+            attributeName="cx"
+            values={`${220 + i * 42};${245 + i * 42};${220 + i * 42}`}
+            dur={`${2 + i * 0.3}s`}
+            repeatCount="indefinite"
+          />
+        </circle>
+      ))}
+
+      <text x="45" y="55" fontSize="13" fill="#0e7490">
+        Reservoir
+      </text>
+      <text x="230" y="255" fontSize="12" fill="#64748b">
+        Water spreads downstream
+      </text>
+    </svg>
+  );
+}
+
+function SimulationVisual({ type }) {
+  if (type === "flow") return <FlowPreview />;
+  if (type === "shock") return <ShockPreview />;
+  return <DamPreview />;
+}
+
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-slate-950 text-white">
-      <div className="mx-auto max-w-6xl px-6 py-12 sm:py-16">
+    <main className="min-h-screen bg-white text-slate-800">
+      {/* Navigation */}
+      <header className="border-b border-slate-100 bg-white">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="ReactFlow3D logo"
+              className="h-11 w-11 object-contain"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <span className="text-xl font-bold tracking-tight text-slate-800">
+              React<span className="text-sky-600">Flow3D</span>
+            </span>
+          </Link>
 
-        {/* Introduction */}
-        <header className="mb-16 text-center">
-          <p className="mb-4 text-sm font-semibold uppercase tracking-[0.2em] text-cyan-400">
-            ReactFlow3D · Interactive Learning Lab
-          </p>
-
-          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
-            Learn science by seeing what happens.
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-3xl text-base leading-8 text-slate-300 sm:text-lg">
-            How does water move around an obstacle? What happens when a dam
-            breaks? How does the shape of an object change the flow of air
-            around it? ReactFlow3D is being developed to help learners
-            investigate questions like these through interactive mathematics
-            and physics experiments.
-          </p>
-
-          <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-400">
-            Start with a subject below and explore the experiments currently
-            available on the platform.
-          </p>
-        </header>
-
-        {/* Subject selection */}
-        <section id="learning-labs">
-          <div className="mb-7">
-            <h2 className="text-2xl font-bold sm:text-3xl">
-              Learning labs
-            </h2>
-            <p className="mt-2 leading-7 text-slate-400">
-              Choose a subject to practise concepts, answer questions, and
-              investigate how things work.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <Link
-              href="/math"
-              className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:-translate-y-1 hover:border-cyan-500"
-            >
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-950 text-3xl">
-                ∑
-              </div>
-
-              <h3 className="text-2xl font-bold group-hover:text-cyan-300">
-                Mathematics
-              </h3>
-
-              <p className="mt-3 leading-7 text-slate-400">
-                Practise mathematical concepts, work through questions, and
-                understand how mathematical ideas are used to solve problems.
-              </p>
-
-              <p className="mt-7 font-medium text-cyan-400">
-                Enter Maths Lab →
-              </p>
+          <nav className="flex items-center gap-5 text-sm font-medium sm:gap-8">
+            <Link href="/math" className="text-slate-600 hover:text-sky-600">
+              Maths
             </Link>
-
             <Link
               href="/physics"
-              className="group rounded-2xl border border-slate-800 bg-slate-900 p-7 transition hover:-translate-y-1 hover:border-cyan-500"
+              className="text-slate-600 hover:text-sky-600"
             >
-              <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-950 text-3xl">
-                ⚛
+              Physics
+            </Link>
+            <a
+              href="#simulations"
+              className="hidden text-slate-600 hover:text-sky-600 sm:block"
+            >
+              Simulations
+            </a>
+          </nav>
+        </div>
+      </header>
+
+      {/* Hero */}
+      <section className="overflow-hidden bg-gradient-to-br from-sky-50 via-white to-cyan-50">
+        <div className="mx-auto grid max-w-7xl items-center gap-8 px-5 py-12 sm:px-8 md:grid-cols-2 md:py-20">
+          <div>
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-sky-100 bg-white px-4 py-2 text-sm font-medium text-sky-700 shadow-sm">
+              <span className="h-2 w-2 rounded-full bg-cyan-500" />
+              Interactive maths and science
+            </div>
+
+            <h1 className="max-w-xl text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
+              See the science.
+              <span className="block text-sky-600">Try it yourself.</span>
+            </h1>
+
+            <p className="mt-5 max-w-lg text-base leading-7 text-slate-600 sm:text-lg">
+              Work through maths problems and explore physics using visual
+              examples, animations, and interactive experiments.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/physics"
+                className="rounded-xl bg-sky-600 px-6 py-3 font-semibold text-white shadow-md shadow-sky-100 transition hover:bg-sky-700"
+              >
+                Open Physics
+              </Link>
+              <Link
+                href="/math"
+                className="rounded-xl border border-slate-200 bg-white px-6 py-3 font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700"
+              >
+                Open Maths
+              </Link>
+            </div>
+
+            <p className="mt-5 text-sm text-slate-500">
+              Learn at your own pace. Test ideas. See what changes.
+            </p>
+          </div>
+
+          {/* Animated illustration */}
+          <div className="relative mx-auto w-full max-w-xl">
+            <div className="absolute inset-8 rounded-full bg-sky-200/40 blur-3xl" />
+            <div className="relative overflow-hidden rounded-3xl border border-sky-100 bg-white p-3 shadow-xl shadow-sky-100/70 sm:p-5">
+              <div className="flex items-center justify-between border-b border-slate-100 px-2 pb-3">
+                <div>
+                  <p className="text-sm font-semibold text-slate-800">
+                    Flow around an object
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Visual example
+                  </p>
+                </div>
+                <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                  Fluid mechanics
+                </span>
               </div>
 
-              <h3 className="text-2xl font-bold group-hover:text-cyan-300">
-                Physics
-              </h3>
+              <div className="h-64 sm:h-72">
+                <FlowPreview />
+              </div>
 
-              <p className="mt-3 leading-7 text-slate-400">
-                Investigate fluid mechanics, aerodynamics, shock waves,
-                and other physical phenomena through interactive
-                computational physics experiments.
-              </p>
-
-              <p className="mt-7 font-medium text-cyan-400">
-                Enter Physics Lab →
-              </p>
-            </Link>
-          </div>
-        </section>
-
-        {/* About ReactFlow3D */}
-        <section className="mt-24 border-t border-slate-800 pt-12">
-          <div className="grid gap-8 md:grid-cols-2 md:gap-14">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-widest text-cyan-400">
-                About ReactFlow3D
-              </p>
-
-              <h2 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">
-                Making physical phenomena easier to explore.
-              </h2>
-            </div>
-
-            <div className="space-y-5 leading-8 text-slate-300">
-              <p>
-                ReactFlow3D grew out of an interest in computational fluid
-                dynamics (CFD), the study of how fluids such as water and
-                air move. It also grew out of a practical question: how can
-                we make the physics behind these movements easier for
-                students to understand?
-              </p>
-
-              <p>
-                In a textbook, a flow pattern may appear as a diagram or a
-                set of equations. In an experiment, the same phenomenon
-                can be investigated by changing conditions and observing
-                the result. We want to bring more of that experience into
-                science learning.
-              </p>
-
-              <p>
-                The platform is being developed around interactive
-                experiments, mathematical questions, and visual explanations.
-                The aim is to help learners connect what they calculate
-                with what happens in a physical system.
-              </p>
+              <div className="flex flex-wrap gap-2 px-2 pb-2">
+                <span className="rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-700">
+                  Flow direction
+                </span>
+                <span className="rounded-lg bg-cyan-50 px-3 py-2 text-xs text-cyan-700">
+                  Streamlines
+                </span>
+                <span className="rounded-lg bg-violet-50 px-3 py-2 text-xs text-violet-700">
+                  Obstacle
+                </span>
+              </div>
             </div>
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* How the platform works */}
-        <section className="mt-20">
-          <div className="max-w-3xl">
-            <h2 className="text-3xl font-bold">
-              What can you do here?
-            </h2>
-
-            <p className="mt-4 leading-8 text-slate-400">
-              The idea is to give learners something to investigate, not
-              just something to read. The activities combine scientific
-              concepts with questions and opportunities to examine results.
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-              <div className="mb-4 text-2xl">〰️</div>
-              <h3 className="text-lg font-semibold">
-                Observe physical behaviour
-              </h3>
-              <p className="mt-3 text-sm leading-7 text-slate-400">
-                Explore examples of fluid motion and other physics concepts
-                through visual experiments.
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6">
-              <div className="mb-4 text-2xl">⚙️</div>
-              <h3 className="text-lg font-semibold">
-                Investigate the conditions
-              </h3>
-              <p className="mt-3 text-sm leading-7 text-slate-400">
-                Where an experiment supports it, change its parameters,
-                compare outcomes, and examine how the system responds.
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-slate-800 bg-slate-900/70 p-6 sm:col-span-2 lg:col-span-1">
-              <div className="mb-4 text-2xl">∑</div>
-              <h3 className="text-lg font-semibold">
-                Work through the questions
-              </h3>
-              <p className="mt-3 text-sm leading-7 text-slate-400">
-                Apply mathematical and physical principles to questions
-                related to the concepts being studied.
-              </p>
-            </article>
-          </div>
-        </section>
-
-        {/* Why we are building it */}
-        <section className="mt-20 rounded-2xl border border-slate-800 bg-slate-900 p-7 sm:p-10">
-          <p className="text-sm font-semibold uppercase tracking-widest text-cyan-400">
-            Why we are building it
+      {/* Subject selection */}
+      <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 md:py-16">
+        <div className="mb-8">
+          <p className="text-sm font-semibold uppercase tracking-widest text-sky-600">
+            Choose a subject
           </p>
-
-          <div className="mt-5 grid gap-6 md:grid-cols-2 md:gap-12">
-            <h2 className="text-3xl font-bold leading-tight">
-              Some things are easier to understand when you can investigate
-              them yourself.
-            </h2>
-
-            <div className="space-y-4 leading-8 text-slate-300">
-              <p>
-                Access to specialised laboratory equipment is limited in
-                many learning environments. Some scientific processes are
-                also difficult to observe directly, even when the equipment
-                is available.
-              </p>
-
-              <p>
-                Computer-based experiments offer another way to study
-                these processes. They can help learners examine a system,
-                compare different conditions, and ask questions that go
-                beyond memorising a definition or formula.
-              </p>
-
-              <p>
-                ReactFlow3D aims to make these experiences easier to access,
-                starting with mathematics and physics and with a particular
-                interest in fluid mechanics.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Students and teachers */}
-        <section className="mt-20">
-          <div className="max-w-3xl">
-            <h2 className="text-3xl font-bold">
-              For learners and teachers
-            </h2>
-
-            <p className="mt-4 leading-8 text-slate-400">
-              The platform is intended to support both independent study
-              and classroom teaching. Each has different needs, and we
-              want the tools to reflect that.
-            </p>
-          </div>
-
-          <div className="mt-8 grid gap-6 sm:grid-cols-2">
-            <article className="rounded-2xl border border-slate-800 p-7">
-              <h3 className="text-xl font-bold text-cyan-300">
-                For students
-              </h3>
-
-              <p className="mt-4 leading-7 text-slate-300">
-                Explore a topic at your own pace, practise questions,
-                revisit concepts you find difficult, and use experiments
-                to connect equations with physical behaviour.
-              </p>
-            </article>
-
-            <article className="rounded-2xl border border-slate-800 p-7">
-              <h3 className="text-xl font-bold text-cyan-300">
-                For teachers
-              </h3>
-
-              <p className="mt-4 leading-7 text-slate-300">
-                Use interactive examples to introduce concepts and give
-                students questions to work through. As the teaching tools
-                develop, the aim is to make it easier to prepare learning
-                activities and organise questions for classroom use.
-              </p>
-            </article>
-          </div>
-        </section>
-
-        {/* Where ReactFlow3D is heading */}
-        <section className="mt-20 border-t border-slate-800 pt-12">
-          <div className="grid gap-8 md:grid-cols-2 md:gap-14">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-widest text-cyan-400">
-                Where we are heading
-              </p>
-
-              <h2 className="mt-4 text-3xl font-bold leading-tight sm:text-4xl">
-                From interactive examples to more advanced simulations.
-              </h2>
-            </div>
-
-            <div className="space-y-5 leading-8 text-slate-300">
-              <p>
-                We are starting with accessible, browser-based learning
-                activities. Over time, we want to develop more detailed
-                simulations in which learners can investigate how changing
-                an object's shape or the conditions around it affects the
-                flow of water or air.
-              </p>
-
-              <p>
-                Another area of development is AI-assisted learning.
-                We are interested in how learning tools could respond to
-                a student's progress, help identify misunderstandings,
-                and provide relevant practice rather than giving every
-                learner the same experience.
-              </p>
-
-              <p>
-                Further development may include geometry-based flow
-                prediction, more advanced three-dimensional visualisation,
-                and virtual reality experiments. These are longer-term
-                directions, not features we claim are already complete.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Closing section */}
-        <section className="mt-20 rounded-2xl border border-cyan-900/70 bg-cyan-950/30 px-6 py-10 text-center sm:px-10">
-          <h2 className="text-2xl font-bold sm:text-3xl">
-            Start with a question.
+          <h2 className="mt-2 text-3xl font-bold text-slate-900">
+            What would you like to work on?
           </h2>
+        </div>
 
-          <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-300">
-            Choose a mathematics or physics topic, work through an
-            experiment, and see which questions it raises for you.
-          </p>
+        <div className="grid gap-5 md:grid-cols-2">
+          <Link
+            href="/math"
+            className="group rounded-2xl border border-violet-100 bg-violet-50/70 p-6 transition hover:-translate-y-1 hover:border-violet-200 hover:shadow-lg hover:shadow-violet-100/60 sm:p-8"
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-3xl shadow-sm">
+                ∑
+              </div>
+              <span className="text-2xl text-violet-500 transition group-hover:translate-x-1">
+                →
+              </span>
+            </div>
+            <h3 className="mt-6 text-2xl font-bold text-slate-900">Maths</h3>
+            <p className="mt-2 max-w-md leading-7 text-slate-600">
+              Practise problems, follow worked examples, and build your
+              understanding step by step.
+            </p>
+            <span className="mt-5 inline-block font-semibold text-violet-700">
+              Go to Maths →
+            </span>
+          </Link>
 
           <Link
             href="/physics"
-            className="mt-7 inline-flex rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400"
+            className="group rounded-2xl border border-sky-100 bg-sky-50/70 p-6 transition hover:-translate-y-1 hover:border-sky-200 hover:shadow-lg hover:shadow-sky-100/60 sm:p-8"
           >
-            Browse physics experiments →
+            <div className="flex items-start justify-between">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-3xl shadow-sm">
+                🌊
+              </div>
+              <span className="text-2xl text-sky-500 transition group-hover:translate-x-1">
+                →
+              </span>
+            </div>
+            <h3 className="mt-6 text-2xl font-bold text-slate-900">Physics</h3>
+            <p className="mt-2 max-w-md leading-7 text-slate-600">
+              Explore fluid flow, shock waves, cavity flow, nozzles, and other
+              physics experiments.
+            </p>
+            <span className="mt-5 inline-block font-semibold text-sky-700">
+              Go to Physics →
+            </span>
           </Link>
-        </section>
+        </div>
+      </section>
 
-        {/* Footer */}
-        <footer className="mt-16 border-t border-slate-800 pt-6 text-center text-sm leading-6 text-slate-500">
-          <p className="font-medium text-slate-300">ReactFlow3D</p>
-          <p className="mt-2">
-            Interactive learning in mathematics, physics, and computational
-            science.
+      {/* Simulation previews */}
+      <section id="simulations" className="bg-slate-50 py-14 md:py-16">
+        <div className="mx-auto max-w-7xl px-5 sm:px-8">
+          <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-widest text-cyan-700">
+                Physics experiments
+              </p>
+              <h2 className="mt-2 text-3xl font-bold text-slate-900">
+                Watch what happens
+              </h2>
+              <p className="mt-3 max-w-xl leading-7 text-slate-600">
+                Preview a few experiments, then open Physics to choose from
+                all eight activities.
+              </p>
+            </div>
+            <Link
+              href="/physics"
+              className="rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:border-sky-300 hover:text-sky-700"
+            >
+              All 8 experiments →
+            </Link>
+          </div>
+
+          <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+            {experiments.map((experiment) => (
+              <article
+                key={experiment.number}
+                className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+              >
+                <div className={`${experiment.color} relative h-56 p-3`}>
+                  <SimulationVisual type={experiment.visual} />
+                  <span className="absolute left-4 top-4 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-slate-600">
+                    Experiment {experiment.number}
+                  </span>
+                </div>
+
+                <div className="p-5">
+                  <p
+                    className="text-xs font-semibold uppercase tracking-wider"
+                    style={{ color: experiment.accent }}
+                  >
+                    {experiment.topic}
+                  </p>
+                  <h3 className="mt-2 text-xl font-bold text-slate-900">
+                    {experiment.title}
+                  </h3>
+                  <p className="mt-2 min-h-12 text-sm leading-6 text-slate-600">
+                    {experiment.description}
+                  </p>
+                  <Link
+                    href={experiment.route}
+                    className="mt-5 inline-flex items-center gap-2 font-semibold text-sky-700 hover:text-sky-900"
+                  >
+                    Open experiment <span aria-hidden="true">→</span>
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* About */}
+      <section className="mx-auto grid max-w-7xl gap-8 px-5 py-14 sm:px-8 md:grid-cols-2 md:items-center md:py-16">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-widest text-sky-600">
+            About ReactFlow3D
           </p>
-        </footer>
+          <h2 className="mt-2 text-3xl font-bold leading-tight text-slate-900">
+            Learn by changing things and seeing the result.
+          </h2>
+        </div>
 
-      </div>
+        <div>
+          <p className="leading-7 text-slate-600">
+            ReactFlow3D is being developed to make science easier to explore
+            through interactive learning. The current activities focus on
+            maths and physics, with more detailed simulations and 3D learning
+            experiences planned for the future.
+          </p>
+
+          <div className="mt-5 flex flex-wrap gap-2">
+            <span className="rounded-full bg-sky-50 px-4 py-2 text-sm text-sky-700">
+              Visual learning
+            </span>
+            <span className="rounded-full bg-cyan-50 px-4 py-2 text-sm text-cyan-700">
+              Physics simulations
+            </span>
+            <span className="rounded-full bg-violet-50 px-4 py-2 text-sm text-violet-700">
+              Future 3D experiments
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="border-t border-slate-100 bg-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 px-5 py-6 text-sm text-slate-500 sm:px-8 md:flex-row md:items-center md:justify-between">
+          <p>
+            <span className="font-semibold text-slate-700">ReactFlow3D</span>
+            {" "}· Interactive maths and science
+          </p>
+          <div className="flex gap-5">
+            <Link href="/math" className="hover:text-sky-700">
+              Maths
+            </Link>
+            <Link href="/physics" className="hover:text-sky-700">
+              Physics
+            </Link>
+          </div>
+        </div>
+      </footer>
     </main>
   );
 }
