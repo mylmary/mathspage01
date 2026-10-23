@@ -56,7 +56,7 @@ Interactive Learning Lab
 
         <p className="mt-3 leading-7 text-slate-400">
           Explore fluid mechanics, aerodynamics, shock waves, and
-          interactive computational physics experiments.
+          computational physics experiments.
         </p>
 
         <p className="mt-7 font-medium text-cyan-400">
