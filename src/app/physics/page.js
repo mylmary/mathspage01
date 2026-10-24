@@ -1,4 +1,4 @@
-
+import AskMini from "@/components/AskMini";
 "use client";
 
 import { useMemo, useState } from "react";
@@ -677,6 +677,8 @@ export default function PhysicsPage() {
             Back to home ↑
           </Link>
         </div>
+      <AskMini />
+    </main>    
       </footer>
     </main>
   );
