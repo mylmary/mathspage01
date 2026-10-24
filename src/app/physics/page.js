@@ -1,4 +1,4 @@
-
+import AskMini from "@/components/AskMini";
 "use client";
 
 import { useMemo, useState } from "react";
