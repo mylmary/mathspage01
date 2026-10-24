@@ -143,7 +143,7 @@ export default function HomePage() {
             </p>
 
             <h1 className="mt-5 max-w-xl text-4xl font-semibold leading-tight tracking-tight sm:text-6xl">
-              Learn science by seeing what happens.
+              Explore fluid mechanics through mathematics and physics.
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-8 text-slate-600">
@@ -215,7 +215,7 @@ export default function HomePage() {
               Fluid mechanics
             </h2>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              Explore examples of fluid motion and computational physics.
+              Examples of fluid motion and computational physics.
             </p>
           </div>
 
@@ -238,8 +238,7 @@ export default function HomePage() {
           </h2>
 
           <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-            Choose a subject to practise concepts, answer questions, and
-            investigate how things work.
+            Choose a subject to practise concepts and answer questions.
           </p>
 
           <div className="mt-8 grid gap-5 sm:grid-cols-2">
