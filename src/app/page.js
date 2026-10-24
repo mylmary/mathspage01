@@ -121,6 +121,15 @@ export default function HomePage() {
             >
               Physics Lab →
             </Link>
+                <a
+                href="https://median.co/share/rdayxwa#androidphone"
+                  target="_blank"
+                    rel="noopener noreferrer"
+                      className="rounded-lg bg-cyan-700 px-4 py-2.5 text-white transition hover:bg-cyan-800"
+                        >
+                        Download app ↓
+                        </a>
+
           </div>
         </div>
       </nav>
