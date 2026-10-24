@@ -147,9 +147,7 @@ export default function HomePage() {
             </h1>
 
             <p className="mt-6 max-w-xl text-base leading-8 text-slate-600">
-              How does water move around an obstacle? What happens when a dam
-              breaks? How does the shape of an object change the flow of air
-              around it?
+              Through a self-directed virtual laboratory environment, users can actively manipulate variables to analyze real-world fluid behavior. To get started with learning, select Mathematics or Physics below.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
