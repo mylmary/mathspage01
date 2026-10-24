@@ -1,5 +1,5 @@
-import AskMini from "@/components/AskMini";
 "use client";
+import AskMini from "@/components/AskMini";
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
