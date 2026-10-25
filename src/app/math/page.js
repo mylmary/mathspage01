@@ -1,4 +1,4 @@
-
+  
 
 "use client";
 
@@ -36,6 +36,8 @@ const defaultQuiz = {
 };
 
 const STORAGE_KEY = "math-platform-published-quiz";
+const RESULTS_KEY = "math-platform-student-results";
+const PROGRESS_KEY = "math-platform-student-progress";
 
 const styles = {
   page: "min-h-screen bg-slate-50 text-slate-900",
@@ -188,6 +190,12 @@ function parseQuizRows(rows) {
 export default function QuizPlatform() {
   const [role, setRole] = useState(null);
   const [studentView, setStudentView] = useState("overview");
+  const [studentName, setStudentName] = useState("");
+  const [studentNameInput, setStudentNameInput] = useState("");
+  const [teacherNameInput, setTeacherNameInput] = useState("");
+  const [teacherAuthorized, setTeacherAuthorized] = useState(false);
+  const [teacherLoginError, setTeacherLoginError] = useState("");
+  const [studentResults, setStudentResults] = useState([]);
 
   const [publishedQuiz, setPublishedQuiz] = useState(null);
   const [draftQuiz, setDraftQuiz] = useState(null);
@@ -208,14 +216,16 @@ export default function QuizPlatform() {
   const [loadingAI, setLoadingAI] = useState(false);
   const [achievements, setAchievements] = useState([]);
 
-  const [studentProfile] = useState({
-    name: "Student",
-    level: "Beginner",
-    totalXP: 0,
-  });
-
   useEffect(() => {
     setPublishedQuiz(readPublishedQuiz());
+    try {
+      const savedResults = JSON.parse(
+        window.localStorage.getItem(RESULTS_KEY) || "[]"
+      );
+      setStudentResults(Array.isArray(savedResults) ? savedResults : []);
+    } catch {
+      setStudentResults([]);
+    }
   }, []);
 
   const activeQuiz = publishedQuiz || defaultQuiz;
@@ -225,6 +235,62 @@ export default function QuizPlatform() {
   const percentage = questions.length
     ? Math.round((score / questions.length) * 100)
     : 0;
+
+  const progressStorageKey = (name, quizTitle) =>
+    `${PROGRESS_KEY}:${name.trim().toLowerCase()}:${quizTitle}`;
+
+  const saveProgress = (progress) => {
+    if (!studentName || !activeQuiz?.title) return;
+    try {
+      window.localStorage.setItem(
+        progressStorageKey(studentName, activeQuiz.title),
+        JSON.stringify({ ...progress, studentName, quizTitle: activeQuiz.title })
+      );
+    } catch {
+      // Keep the quiz usable even if browser storage is unavailable.
+    }
+  };
+
+  const handleStudentLogin = (event) => {
+    event.preventDefault();
+    const name = studentNameInput.trim();
+    if (!name) return;
+    setStudentName(name);
+    const quiz = publishedQuiz || defaultQuiz;
+    let saved = null;
+    try {
+      saved = JSON.parse(
+        window.localStorage.getItem(progressStorageKey(name, quiz.title)) || "null"
+      );
+    } catch {
+      saved = null;
+    }
+    if (saved) {
+      setCurrentQuestion(Math.min(saved.currentQuestion || 0, Math.max(quiz.questions.length - 1, 0)));
+      setSelectedAnswer(saved.selectedAnswer || "");
+      setShowResult(Boolean(saved.showResult));
+      setScore(saved.score || 0);
+      setQuizFinished(Boolean(saved.quizFinished));
+      setAnswers(Array.isArray(saved.answers) ? saved.answers : []);
+      setDifficultyLevel(saved.difficultyLevel || "Beginner");
+      setCorrectStreak(saved.correctStreak || 0);
+      setAchievements(Array.isArray(saved.achievements) ? saved.achievements : []);
+      setStudentView(saved.quizFinished ? "overview" : (saved.answers?.length ? "quiz" : "overview"));
+    } else {
+      resetAttempt();
+      setStudentView("overview");
+    }
+  };
+
+  const handleTeacherLogin = (event) => {
+    event.preventDefault();
+    if (teacherNameInput.trim().toLowerCase() === "matuvi") {
+      setTeacherAuthorized(true);
+      setTeacherLoginError("");
+    } else {
+      setTeacherLoginError("Access denied. Only the authorized teacher can open this page.");
+    }
+  };
 
   const resetAttempt = () => {
     setCurrentQuestion(0);
@@ -333,18 +399,30 @@ export default function QuizPlatform() {
     const isCorrect = selectedAnswer === question.correctAnswer;
     const updatedScore = score + (isCorrect ? 1 : 0);
     const updatedStreak = isCorrect ? correctStreak + 1 : 0;
-
-    setScore(updatedScore);
-    setCorrectStreak(updatedStreak);
-    setAnswers((previous) => [
-      ...previous,
+    const updatedAnswers = [
+      ...answers,
       {
         question: question.question,
         selectedAnswer,
         correctAnswer: question.correctAnswer,
         isCorrect,
       },
-    ]);
+    ];
+
+    setScore(updatedScore);
+    setCorrectStreak(updatedStreak);
+    setAnswers(updatedAnswers);
+    saveProgress({
+      currentQuestion,
+      selectedAnswer,
+      showResult: true,
+      score: updatedScore,
+      quizFinished: false,
+      answers: updatedAnswers,
+      difficultyLevel: updatedStreak >= 3 ? "Advanced" : updatedStreak >= 2 ? "Intermediate" : "Beginner",
+      correctStreak: updatedStreak,
+      achievements,
+    });
 
     if (isCorrect) {
       if (updatedScore >= 3) {
@@ -381,9 +459,59 @@ export default function QuizPlatform() {
     setAIExplanation("");
 
     if (currentQuestion + 1 < questions.length) {
-      setCurrentQuestion((previous) => previous + 1);
+      const nextQuestion = currentQuestion + 1;
+      setCurrentQuestion(nextQuestion);
+      saveProgress({
+        currentQuestion: nextQuestion,
+        selectedAnswer: "",
+        showResult: false,
+        score,
+        quizFinished: false,
+        answers,
+        difficultyLevel,
+        correctStreak,
+        achievements,
+      });
     } else {
       setQuizFinished(true);
+      const finalPercentage = questions.length
+        ? Math.round((score / questions.length) * 100)
+        : 0;
+      const result = {
+        studentName,
+        quizTitle: activeQuiz.title,
+        score,
+        totalQuestions: questions.length,
+        percentage: finalPercentage,
+        passed: finalPercentage >= activeQuiz.passingPercentage,
+        completedAt: new Date().toISOString(),
+      };
+      try {
+        const allResults = JSON.parse(window.localStorage.getItem(RESULTS_KEY) || "[]");
+        const existing = Array.isArray(allResults) ? allResults : [];
+        const updatedResults = [
+          ...existing.filter((item) =>
+            !(item.studentName?.toLowerCase() === studentName.toLowerCase() &&
+              item.quizTitle === activeQuiz.title)
+          ),
+          result,
+        ];
+        window.localStorage.setItem(RESULTS_KEY, JSON.stringify(updatedResults));
+        setStudentResults(updatedResults);
+      } catch {
+        // Results remain visible for this session even if saving fails.
+      }
+      saveProgress({
+        currentQuestion,
+        selectedAnswer: "",
+        showResult: false,
+        score,
+        quizFinished: true,
+        answers,
+        difficultyLevel,
+        correctStreak,
+        achievements,
+      });
     }
   };
 
@@ -402,6 +530,11 @@ export default function QuizPlatform() {
   const returnHome = () => {
     setRole(null);
     setStudentView("overview");
+    setStudentName("");
+    setStudentNameInput("");
+    setTeacherNameInput("");
+    setTeacherAuthorized(false);
+    setTeacherLoginError("");
   };
 
   const NavBar = () => (
@@ -445,6 +578,8 @@ export default function QuizPlatform() {
               onClick={() => {
                 setRole("student");
                 setStudentView("overview");
+                setStudentName("");
+                setStudentNameInput("");
               }}
               className="rounded-3xl border border-slate-200 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
@@ -462,7 +597,12 @@ export default function QuizPlatform() {
             </button>
 
             <button
-              onClick={() => setRole("teacher")}
+              onClick={() => {
+                setRole("teacher");
+                setTeacherAuthorized(false);
+                setTeacherNameInput("");
+                setTeacherLoginError("");
+              }}
               className="rounded-3xl border border-slate-200 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
               <div className="mb-6 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-2xl">
@@ -483,8 +623,45 @@ export default function QuizPlatform() {
     );
   }
 
+  // Ask for the teacher name before showing any teacher dashboard content.
+  if (role === "teacher" && !teacherAuthorized) {
+    return (
+      <main className={`${styles.page} flex min-h-screen items-center justify-center px-4`}>
+        <form onSubmit={handleTeacherLogin} className={`${styles.card} w-full max-w-md`}>
+          <h1 className="mb-2 text-2xl font-bold">Teacher access</h1>
+          <p className="mb-5 text-slate-600">Enter your teacher name to continue.</p>
+          <label htmlFor="teacher-name" className="mb-2 block font-semibold">Teacher name</label>
+          <input id="teacher-name" value={teacherNameInput} onChange={(e) => setTeacherNameInput(e.target.value)}
+            autoComplete="name" className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3"
+            placeholder="Enter teacher name" required />
+          {teacherLoginError && <p role="alert" className="mb-4 text-sm text-red-700">{teacherLoginError}</p>}
+          <button type="submit" className={`${styles.primary} w-full`}>Open teacher dashboard</button>
+          <button type="button" className={`${styles.secondary} mt-3 w-full`} onClick={returnHome}>Back</button>
+        </form>
+      </main>
+    );
+  }
+
+  // Ask students for their name before opening the Maths page.
+  if (role === "student" && !studentName) {
+    return (
+      <main className={`${styles.page} flex min-h-screen items-center justify-center px-4`}>
+        <form onSubmit={handleStudentLogin} className={`${styles.card} w-full max-w-md`}>
+          <h1 className="mb-2 text-2xl font-bold">Welcome to Maths</h1>
+          <p className="mb-5 text-slate-600">Enter your name to open your saved test progress.</p>
+          <label htmlFor="student-name" className="mb-2 block font-semibold">Your name</label>
+          <input id="student-name" value={studentNameInput} onChange={(e) => setStudentNameInput(e.target.value)}
+            autoComplete="name" className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3"
+            placeholder="Enter your full name" required />
+          <button type="submit" className={`${styles.primary} w-full`}>Continue to Maths</button>
+          <button type="button" className={`${styles.secondary} mt-3 w-full`} onClick={returnHome}>Back</button>
+        </form>
+      </main>
+    );
+  }
+
   // 2. TEACHER PAGE
-  if (role === "teacher") {
+  if (role === "teacher" && teacherAuthorized) {
     return (
       <main className={styles.page}>
         <NavBar />
@@ -636,6 +813,34 @@ export default function QuizPlatform() {
             </section>
           )}
 
+          <section className={`${styles.card} mb-6`}>
+            <h2 className="mb-2 text-xl font-bold">Student test results</h2>
+            <p className="mb-4 text-sm text-slate-500">
+              Results are saved in this browser. A student's latest completed attempt for each test is shown.
+            </p>
+            {studentResults.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-left text-sm">
+                  <thead><tr className="border-b border-slate-200">
+                    <th className="p-3">Student</th><th className="p-3">Test</th>
+                    <th className="p-3">Score</th><th className="p-3">Percentage</th>
+                    <th className="p-3">Status</th><th className="p-3">Completed</th>
+                  </tr></thead>
+                  <tbody>{[...studentResults].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt)).map((item, index) => (
+                    <tr key={`${item.studentName}-${item.quizTitle}-${index}`} className="border-b border-slate-100">
+                      <td className="p-3 font-medium">{item.studentName}</td>
+                      <td className="p-3">{item.quizTitle}</td>
+                      <td className="p-3">{item.score} / {item.totalQuestions}</td>
+                      <td className="p-3">{item.percentage}%</td>
+                      <td className={`p-3 font-semibold ${item.passed ? "text-emerald-700" : "text-amber-700"}`}>{item.passed ? "Passed" : "Not passed"}</td>
+                      <td className="p-3">{item.completedAt ? new Date(item.completedAt).toLocaleString() : "—"}</td>
+                    </tr>
+                  ))}</tbody>
+                </table>
+              </div>
+            ) : <p className="text-slate-600">No completed student tests have been recorded in this browser yet.</p>}
+          </section>
+
           <section className={styles.card}>
             <h2 className="mb-2 text-xl font-bold">Published quiz</h2>
 
@@ -674,7 +879,7 @@ export default function QuizPlatform() {
             STUDENT WORKSPACE
           </p>
           <h1 className="mb-2 text-3xl font-bold md:text-4xl">
-            Welcome, {studentProfile.name}
+            Welcome, {studentName}
           </h1>
           <p className={styles.muted}>
             Learn, practise, and review your progress.
@@ -720,7 +925,7 @@ export default function QuizPlatform() {
               </p>
               <button
                 onClick={() => {
-                  resetAttempt();
+                  if (quizFinished) resetAttempt();
                   setStudentView("quiz");
                 }}
                 className="rounded-xl bg-white px-5 py-3 font-semibold text-slate-900 hover:bg-slate-100"
