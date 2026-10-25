@@ -1,4 +1,4 @@
-  
+
 
 "use client";
 
@@ -35,10 +35,6 @@ const defaultQuiz = {
   ],
 };
 
-const STORAGE_KEY = "math-platform-published-quiz";
-const RESULTS_KEY = "math-platform-student-results";
-const PROGRESS_KEY = "math-platform-student-progress";
-
 const styles = {
   page: "min-h-screen bg-slate-50 text-slate-900",
   container: "mx-auto max-w-6xl px-4 py-8 md:px-8",
@@ -49,29 +45,6 @@ const styles = {
     "rounded-xl border border-slate-300 bg-white px-5 py-3 font-semibold hover:bg-slate-50",
   muted: "text-sm text-slate-500",
 };
-
-function readPublishedQuiz() {
-  if (typeof window === "undefined") return null;
-
-  try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (!saved) return null;
-
-    const quiz = JSON.parse(saved);
-
-    if (
-      !quiz ||
-      !Array.isArray(quiz.questions) ||
-      quiz.questions.length === 0
-    ) {
-      return null;
-    }
-
-    return quiz;
-  } catch {
-    return null;
-  }
-}
 
 function normalizeHeader(value) {
   return String(value ?? "")
@@ -192,6 +165,15 @@ export default function QuizPlatform() {
   const [studentView, setStudentView] = useState("overview");
   const [studentName, setStudentName] = useState("");
   const [studentNameInput, setStudentNameInput] = useState("");
+  const [studentPinInput, setStudentPinInput] = useState("");
+  const [studentAuthMode, setStudentAuthMode] = useState("login");
+  const [studentAuthError, setStudentAuthError] = useState("");
+  const [studentAuthBusy, setStudentAuthBusy] = useState(false);
+  const [studentId, setStudentId] = useState(null);
+  const [teacherLoginBusy, setTeacherLoginBusy] = useState(false);
+  const [deletingQuiz, setDeletingQuiz] = useState(false);
+  const [deleteResultsToo, setDeleteResultsToo] = useState(false);
+  const [platformMessage, setPlatformMessage] = useState("");
   const [teacherNameInput, setTeacherNameInput] = useState("");
   const [teacherAuthorized, setTeacherAuthorized] = useState(false);
   const [teacherLoginError, setTeacherLoginError] = useState("");
@@ -217,16 +199,61 @@ export default function QuizPlatform() {
   const [achievements, setAchievements] = useState([]);
 
   useEffect(() => {
-    setPublishedQuiz(readPublishedQuiz());
-    try {
-      const savedResults = JSON.parse(
-        window.localStorage.getItem(RESULTS_KEY) || "[]"
-      );
-      setStudentResults(Array.isArray(savedResults) ? savedResults : []);
-    } catch {
-      setStudentResults([]);
+    let cancelled = false;
+    async function loadSharedPlatform() {
+      try {
+        const [sessionResponse, quizResponse] = await Promise.all([
+          fetch("/api/platform?action=session", { cache: "no-store" }),
+          fetch("/api/platform?action=quiz", { cache: "no-store" }),
+        ]);
+        const sessionData = await sessionResponse.json();
+        const quizData = await quizResponse.json();
+        if (cancelled) return;
+        const user = sessionData?.user;
+        if (user?.role === "student") {
+          setRole("student");
+          setStudentName(user.username);
+          setStudentNameInput(user.username);
+          setStudentId(user.id);
+        } else if (user?.role === "teacher") {
+          setRole("teacher");
+          setTeacherAuthorized(true);
+          loadTeacherResults();
+        }
+        const rawQuiz = quizData?.quiz;
+        if (rawQuiz && Array.isArray(rawQuiz.questions)) {
+          setPublishedQuiz({
+            ...rawQuiz,
+            passingPercentage: Number(rawQuiz.passing_percentage ?? rawQuiz.passingPercentage ?? 70),
+          });
+        } else {
+          setPublishedQuiz(null);
+        }
+      } catch {
+        if (!cancelled) setPlatformMessage("Could not connect to the shared platform. Please refresh and try again.");
+      }
     }
+    loadSharedPlatform();
+    return () => { cancelled = true; };
   }, []);
+
+  const loadTeacherResults = async () => {
+    try {
+      const response = await fetch("/api/platform?action=results", { cache: "no-store" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Could not load results.");
+      const rows = Array.isArray(data.results) ? data.results : [];
+      setStudentResults(rows.map((item) => ({
+        ...item,
+        studentName: item.student_username ?? item.studentName ?? "Student",
+        quizTitle: item.quiz_title ?? item.quizTitle ?? "Quiz",
+        totalQuestions: item.total_questions ?? item.totalQuestions ?? 0,
+        completedAt: item.completed_at ?? item.completedAt ?? null,
+      })));
+    } catch (error) {
+      setPlatformMessage(error.message || "Could not load student results.");
+    }
+  };
 
   const activeQuiz = publishedQuiz || defaultQuiz;
   const questions = activeQuiz.questions;
@@ -236,59 +263,63 @@ export default function QuizPlatform() {
     ? Math.round((score / questions.length) * 100)
     : 0;
 
-  const progressStorageKey = (name, quizTitle) =>
-    `${PROGRESS_KEY}:${name.trim().toLowerCase()}:${quizTitle}`;
-
   const saveProgress = (progress) => {
-    if (!studentName || !activeQuiz?.title) return;
-    try {
-      window.localStorage.setItem(
-        progressStorageKey(studentName, activeQuiz.title),
-        JSON.stringify({ ...progress, studentName, quizTitle: activeQuiz.title })
-      );
-    } catch {
-      // Keep the quiz usable even if browser storage is unavailable.
-    }
+    if (!studentId || !activeQuiz?.id) return;
+    fetch("/api/platform", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save-progress", quizId: activeQuiz.id, progress }),
+    }).catch(() => {});
   };
 
-  const handleStudentLogin = (event) => {
+  const handleStudentLogin = async (event) => {
     event.preventDefault();
-    const name = studentNameInput.trim();
-    if (!name) return;
-    setStudentName(name);
-    const quiz = publishedQuiz || defaultQuiz;
-    let saved = null;
+    setStudentAuthError("");
+    setStudentAuthBusy(true);
     try {
-      saved = JSON.parse(
-        window.localStorage.getItem(progressStorageKey(name, quiz.title)) || "null"
-      );
-    } catch {
-      saved = null;
-    }
-    if (saved) {
-      setCurrentQuestion(Math.min(saved.currentQuestion || 0, Math.max(quiz.questions.length - 1, 0)));
-      setSelectedAnswer(saved.selectedAnswer || "");
-      setShowResult(Boolean(saved.showResult));
-      setScore(saved.score || 0);
-      setQuizFinished(Boolean(saved.quizFinished));
-      setAnswers(Array.isArray(saved.answers) ? saved.answers : []);
-      setDifficultyLevel(saved.difficultyLevel || "Beginner");
-      setCorrectStreak(saved.correctStreak || 0);
-      setAchievements(Array.isArray(saved.achievements) ? saved.achievements : []);
-      setStudentView(saved.quizFinished ? "overview" : (saved.answers?.length ? "quiz" : "overview"));
-    } else {
-      resetAttempt();
+      const response = await fetch("/api/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: studentAuthMode === "register" ? "register" : "login",
+          username: studentNameInput.trim(),
+          pin: studentPinInput,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Student sign-in failed.");
+      setStudentName(data.user.username);
+      setStudentNameInput(data.user.username);
+      setStudentId(data.user.id);
+      setStudentPinInput("");
+      setStudentAuthError("");
       setStudentView("overview");
+      resetAttempt();
+    } catch (error) {
+      setStudentAuthError(error.message || "Could not sign in.");
+    } finally {
+      setStudentAuthBusy(false);
     }
   };
 
-  const handleTeacherLogin = (event) => {
+  const handleTeacherLogin = async (event) => {
     event.preventDefault();
-    if (teacherNameInput.trim().toLowerCase() === "matuvi") {
+    setTeacherLoginBusy(true);
+    setTeacherLoginError("");
+    try {
+      const response = await fetch("/api/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "teacher-login", password: teacherNameInput }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Teacher login failed.");
       setTeacherAuthorized(true);
-      setTeacherLoginError("");
-    } else {
-      setTeacherLoginError("Access denied. Only the authorized teacher can open this page.");
+      await loadTeacherResults();
+    } catch (error) {
+      setTeacherLoginError(error.message || "Access denied.");
+    } finally {
+      setTeacherLoginBusy(false);
     }
   };
 
@@ -371,25 +402,62 @@ export default function QuizPlatform() {
     }
   };
 
-  const publishQuiz = () => {
+  const publishQuiz = async () => {
     if (!draftQuiz?.questions?.length) return;
-
+    setUploading(true);
+    setUploadMessage("");
     try {
-      // Save before updating the student interface.
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(draftQuiz)
-      );
-
-      setPublishedQuiz(draftQuiz);
+      const response = await fetch("/api/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "publish-quiz", quiz: draftQuiz }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Could not publish quiz.");
+      const savedQuiz = data.quiz || draftQuiz;
+      setPublishedQuiz({
+        ...savedQuiz,
+        passingPercentage: Number(savedQuiz.passing_percentage ?? savedQuiz.passingPercentage ?? draftQuiz.passingPercentage ?? 70),
+      });
       resetAttempt();
-      setUploadMessage("Quiz published successfully.");
+      setUploadMessage("Quiz published successfully for all students.");
       setDraftQuiz(null);
       setUploadErrors([]);
-    } catch {
-      setUploadErrors([
-        "Could not save this quiz in browser storage. The quiz may be too large.",
-      ]);
+    } catch (error) {
+      setUploadErrors([error.message || "Could not publish the quiz."]);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deletePublishedQuiz = async () => {
+    if (!publishedQuiz?.id) return;
+    const confirmed = window.confirm(
+      `Delete the published quiz “${publishedQuiz.title}”?${deleteResultsToo ? " Its student results will also be deleted." : " Student results will be kept."}`
+    );
+    if (!confirmed) return;
+    setDeletingQuiz(true);
+    setPlatformMessage("");
+    try {
+      const response = await fetch("/api/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "delete-quiz",
+          quizId: publishedQuiz.id,
+          confirmed: true,
+          deleteResults: deleteResultsToo,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data?.error || "Could not delete the quiz.");
+      setPublishedQuiz(null);
+      setDeleteResultsToo(false);
+      setPlatformMessage("Published quiz deleted. Student results were " + (deleteResultsToo ? "deleted too." : "preserved."));
+    } catch (error) {
+      setPlatformMessage(error.message || "Could not delete the quiz.");
+    } finally {
+      setDeletingQuiz(false);
     }
   };
 
@@ -486,21 +554,25 @@ export default function QuizPlatform() {
         passed: finalPercentage >= activeQuiz.passingPercentage,
         completedAt: new Date().toISOString(),
       };
-      try {
-        const allResults = JSON.parse(window.localStorage.getItem(RESULTS_KEY) || "[]");
-        const existing = Array.isArray(allResults) ? allResults : [];
-        const updatedResults = [
-          ...existing.filter((item) =>
-            !(item.studentName?.toLowerCase() === studentName.toLowerCase() &&
-              item.quizTitle === activeQuiz.title)
-          ),
-          result,
-        ];
-        window.localStorage.setItem(RESULTS_KEY, JSON.stringify(updatedResults));
-        setStudentResults(updatedResults);
-      } catch {
-        // Results remain visible for this session even if saving fails.
-      }
+      fetch("/api/platform", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "save-result",
+          result: {
+            quizId: activeQuiz.id,
+            quizTitle: activeQuiz.title,
+            score: result.score,
+            totalQuestions: result.totalQuestions,
+            percentage: result.percentage,
+            passed: result.passed,
+          },
+        }),
+      }).then(async (response) => {
+        const data = await response.json();
+        if (!response.ok) throw new Error(data?.error || "Could not save result.");
+        if (role === "teacher") await loadTeacherResults();
+      }).catch(() => setPlatformMessage("Your quiz ended, but the result could not be saved to the shared database. Please tell your teacher."));
       saveProgress({
         currentQuestion,
         selectedAnswer: "",
@@ -528,6 +600,8 @@ export default function QuizPlatform() {
   };
 
   const returnHome = () => {
+    fetch("/api/platform", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "logout" }) }).catch(() => {});
+    setStudentId(null);
     setRole(null);
     setStudentView("overview");
     setStudentName("");
@@ -580,6 +654,9 @@ export default function QuizPlatform() {
                 setStudentView("overview");
                 setStudentName("");
                 setStudentNameInput("");
+                setStudentPinInput("");
+                setStudentAuthError("");
+                setStudentAuthMode("login");
               }}
               className="rounded-3xl border border-slate-200 bg-white p-8 text-left shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
             >
@@ -629,32 +706,38 @@ export default function QuizPlatform() {
       <main className={`${styles.page} flex min-h-screen items-center justify-center px-4`}>
         <form onSubmit={handleTeacherLogin} className={`${styles.card} w-full max-w-md`}>
           <h1 className="mb-2 text-2xl font-bold">Teacher access</h1>
-          <p className="mb-5 text-slate-600">Enter your teacher name to continue.</p>
-          <label htmlFor="teacher-name" className="mb-2 block font-semibold">Teacher name</label>
+          <p className="mb-5 text-slate-600">Enter the teacher password to continue.</p>
+          <label htmlFor="teacher-name" className="mb-2 block font-semibold">Teacher password</label>
           <input id="teacher-name" value={teacherNameInput} onChange={(e) => setTeacherNameInput(e.target.value)}
-            autoComplete="name" className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3"
-            placeholder="Enter teacher name" required />
+            type="password" autoComplete="current-password" className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3"
+            placeholder="Enter teacher password" required />
           {teacherLoginError && <p role="alert" className="mb-4 text-sm text-red-700">{teacherLoginError}</p>}
-          <button type="submit" className={`${styles.primary} w-full`}>Open teacher dashboard</button>
+          <button type="submit" disabled={teacherLoginBusy} className={`${styles.primary} w-full`}>{teacherLoginBusy ? "Signing in…" : "Open teacher dashboard"}</button>
           <button type="button" className={`${styles.secondary} mt-3 w-full`} onClick={returnHome}>Back</button>
         </form>
       </main>
     );
   }
 
-  // Ask students for their name before opening the Maths page.
+  // Student accounts use a username and four-digit PIN.
   if (role === "student" && !studentName) {
     return (
       <main className={`${styles.page} flex min-h-screen items-center justify-center px-4`}>
         <form onSubmit={handleStudentLogin} className={`${styles.card} w-full max-w-md`}>
-          <h1 className="mb-2 text-2xl font-bold">Welcome to Maths</h1>
-          <p className="mb-5 text-slate-600">Enter your name to open your saved test progress.</p>
-          <label htmlFor="student-name" className="mb-2 block font-semibold">Your name</label>
-          <input id="student-name" value={studentNameInput} onChange={(e) => setStudentNameInput(e.target.value)}
-            autoComplete="name" className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3"
-            placeholder="Enter your full name" required />
-          <button type="submit" className={`${styles.primary} w-full`}>Continue to Maths</button>
+          <h1 className="mb-2 text-2xl font-bold">Student account</h1>
+          <p className="mb-5 text-slate-600">Sign in to continue, or create an account if your class has space.</p>
+          <div className="mb-5 grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => { setStudentAuthMode("login"); setStudentAuthError(""); }} className={studentAuthMode === "login" ? styles.primary : styles.secondary}>Sign in</button>
+            <button type="button" onClick={() => { setStudentAuthMode("register"); setStudentAuthError(""); }} className={studentAuthMode === "register" ? styles.primary : styles.secondary}>Register</button>
+          </div>
+          <label htmlFor="student-name" className="mb-2 block font-semibold">Username</label>
+          <input id="student-name" value={studentNameInput} onChange={(e) => setStudentNameInput(e.target.value)} autoComplete="username" minLength={3} maxLength={20} pattern="[A-Za-z0-9_]+" className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3" placeholder="3–20 letters, numbers or _" required />
+          <label htmlFor="student-pin" className="mb-2 block font-semibold">4-digit PIN</label>
+          <input id="student-pin" value={studentPinInput} onChange={(e) => setStudentPinInput(e.target.value.replace(/\D/g, "").slice(0, 4))} type="password" inputMode="numeric" autoComplete={studentAuthMode === "register" ? "new-password" : "current-password"} pattern="[0-9]{4}" maxLength={4} className="mb-4 w-full rounded-xl border border-slate-300 px-4 py-3" placeholder="Enter 4 digits" required />
+          {studentAuthError && <p role="alert" className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-800">{studentAuthError}</p>}
+          <button type="submit" disabled={studentAuthBusy} className={`${styles.primary} w-full`}>{studentAuthBusy ? "Please wait…" : studentAuthMode === "register" ? "Create account" : "Sign in"}</button>
           <button type="button" className={`${styles.secondary} mt-3 w-full`} onClick={returnHome}>Back</button>
+          <p className="mt-4 text-xs text-slate-500">Keep your PIN private. If you forget it, ask your teacher for help.</p>
         </form>
       </main>
     );
@@ -816,7 +899,7 @@ export default function QuizPlatform() {
           <section className={`${styles.card} mb-6`}>
             <h2 className="mb-2 text-xl font-bold">Student test results</h2>
             <p className="mb-4 text-sm text-slate-500">
-              Results are saved in this browser. A student's latest completed attempt for each test is shown.
+              Results are loaded from the shared database so the teacher can view results across devices.
             </p>
             {studentResults.length ? (
               <div className="overflow-x-auto">
@@ -838,11 +921,12 @@ export default function QuizPlatform() {
                   ))}</tbody>
                 </table>
               </div>
-            ) : <p className="text-slate-600">No completed student tests have been recorded in this browser yet.</p>}
+            ) : <p className="text-slate-600">No completed student tests have been recorded yet.</p>}
           </section>
 
           <section className={styles.card}>
             <h2 className="mb-2 text-xl font-bold">Published quiz</h2>
+            {platformMessage && <p role="status" className="my-3 rounded-xl bg-blue-50 p-3 text-sm text-blue-900">{platformMessage}</p>}
 
             {publishedQuiz ? (
               <>
@@ -852,14 +936,19 @@ export default function QuizPlatform() {
                   {publishedQuiz.passingPercentage}%
                 </p>
                 <p className="mt-3 text-sm text-emerald-700">
-                  This quiz is available in the student view of this
-                  browser.
+                  This quiz is published for students using the shared platform.
                 </p>
+                <label className="mt-4 flex items-start gap-3 text-sm text-slate-700">
+                  <input type="checkbox" checked={deleteResultsToo} onChange={(e) => setDeleteResultsToo(e.target.checked)} className="mt-1" />
+                  <span>Also delete student results for this quiz (optional). Results are kept by default.</span>
+                </label>
+                <button onClick={deletePublishedQuiz} disabled={deletingQuiz} className="mt-4 rounded-xl bg-red-700 px-5 py-3 font-semibold text-white disabled:opacity-50">
+                  {deletingQuiz ? "Deleting…" : "Delete published quiz"}
+                </button>
               </>
             ) : (
               <p className="text-slate-600">
-                No teacher-uploaded quiz has been published yet. Students
-                will see the sample quiz until you publish one.
+                No teacher-uploaded quiz has been published yet. Students will not have a shared quiz until you publish one.
               </p>
             )}
           </section>
@@ -884,6 +973,7 @@ export default function QuizPlatform() {
           <p className={styles.muted}>
             Learn, practise, and review your progress.
           </p>
+          {platformMessage && <p role="status" className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-amber-900">{platformMessage}</p>}
         </div>
 
         <div className="mb-6 flex flex-wrap gap-3">
