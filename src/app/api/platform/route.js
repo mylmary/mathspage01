@@ -262,39 +262,47 @@ export async function POST(request) {
       );
     }
 
-    if (action === "login") {
-      const username = String(body.username || "").trim();
-      const pin = String(body.pin || "");
+    
+if (action === "login") {
+  const username = String(body.username || "").trim();
+  const pin = String(body.pin || "");
 
-      if (!username || !/^\d{4}$/.test(pin)) {
-        return fail("Enter your username and 4-digit PIN.");
-      }
+  if (!username || !/^\d{4}$/.test(pin)) {
+    return fail("Enter your username and 4-digit PIN.");
+  }
 
-      const response = await db(
-        `students?select=id,username,pin_hash&username=eq.${encodeURIComponent(username)}`
-      );
-      const students = await readJson(response);
+  const response = await db(
+    `students?select=id,username,pin_hash&username=eq.${encodeURIComponent(username)}`
+  );
 
-      if (
-        !response.ok ||
-        !Array.isArray(students) ||
-        !students[0] ||
-        !verifyPin(pin, students[0].pin_hash)
-      ) {
-        return fail("Incorrect username or PIN.", 401);
-      }
+  if (!response.ok) {
+    return fail("Could not check your account. Please try again.", 500);
+  }
 
-      const student = students[0];
-      return reply(
-        { user: { id: student.id, username: student.username, role: "student" } },
-        200,
-        createSession({
-          id: student.id,
-          username: student.username,
-          role: "student",
-        })
-      );
-    }
+  const students = await readJson(response);
+
+  if (!Array.isArray(students) || !students[0]) {
+    return fail("Username or PIN is incorrect.", 401);
+  }
+
+  const student = students[0];
+
+  if (!verifyPin(pin, student.pin_hash)) {
+    return fail("Username or PIN is incorrect.", 401);
+  }
+
+  const user = {
+    id: student.id,
+    username: student.username,
+    role: "student",
+  };
+
+  return reply(
+    { user },
+    200,
+    createSession(user)
+  );
+}
 
     if (action === "teacher-login") {
       const password = String(body.password || "");
