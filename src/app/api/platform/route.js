@@ -276,8 +276,16 @@ if (action === "login") {
   );
 
   if (!response.ok) {
-    return fail("Could not check your account. Please try again.", 500);
-  }
+  const error = await readJson(response);
+
+  console.error("Student login database error:", {
+    status: response.status,
+    code: error?.code,
+    message: error?.message,
+  });
+
+  return fail("Could not check your account. Please try again.", 500);
+}
 
   const students = await readJson(response);
 
