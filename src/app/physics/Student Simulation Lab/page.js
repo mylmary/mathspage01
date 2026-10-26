@@ -1,212 +1,101 @@
+
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 
 const experiments = [
-{
-title: "Cylinder Flow",
-category: "Fluid Dynamics",
-icon: "🌀",
-description:
-"Explore how fluid moves around a cylinder and observe the wake behind it.",
-href: "/physics/cylinder-flow",
-},
-{
-title: "Lid-Driven Cavity",
-category: "Fluid Dynamics",
-icon: "💧",
-description:
-"Investigate circulation inside a cavity driven by a moving lid.",
-href: "/physics/lid-driven-cavity",
-},
-{
-title: "Sod Shock Tube",
-category: "Compressible Flow",
-icon: "🌊",
-description:
-"Explore shock waves, contact discontinuities and expansion waves.",
-href: "/physics/sod-shock-tube",
-},
-{
-title: "Flow Lines",
-category: "Fluid Dynamics",
-icon: "〰️",
-description:
-"Visualise streamlines and discover how flow patterns change.",
-href: "/physics/flow-lines",
-},
-{
-title: "Nozzle Flow",
-category: "Compressible Flow",
-icon: "🚀",
-description:
-"Explore how fluid velocity and pressure change through a nozzle.",
-href: "/physics/nozzle",
-},
-{
-title: "Flat Plate",
-category: "Boundary Layers",
-icon: "📈",
-description:
-"Investigate boundary-layer development along a flat surface.",
-href: "/physics/flat-plate",
-},
-{
-title: "NACA 0012 Airfoil",
-category: "Aerodynamics",
-icon: "✈️",
-description:
-"Explore airflow around an airfoil and investigate lift-related flow patterns.",
-href: "/physics/naca0012",
-},
-{
-title: "Dam Break",
-category: "Free-Surface Flow",
-icon: "🌊",
-description:
-"Observe how water spreads after a barrier is suddenly removed.",
-href: "/physics/dam-break",
-},
-{
-title: "Magic Fluids",
-category: "Interactive Fluids",
-icon: "✨",
-description:
-"Experiment with colourful, interactive fluid motion.",
-href: "/physics/magic-fluids",
-},
+  {
+    title: "Cylinder Flow",
+    description: "Explore fluid flow around a cylinder.",
+    href: "/physics/Student%20Simulation%20Lab/cylinder-flow",
+  },
+  {
+    title: "Lid-Driven Cavity",
+    description: "Investigate circulation inside a driven cavity.",
+    href: "/physics/Student%20Simulation%20Lab/lid-driven-cavity",
+  },
+  {
+    title: "Sod Shock Tube",
+    description: "Explore shock waves and compressible flow.",
+    href: "/physics/Student%20Simulation%20Lab/sod-shock-tube",
+  },
+  {
+    title: "Flow Lines",
+    description: "Visualise fluid streamlines and flow patterns.",
+    href: "/physics/Student%20Simulation%20Lab/flow-lines",
+  },
+  {
+    title: "Nozzle Flow",
+    description: "Explore fluid flow through a nozzle.",
+    href: "/physics/Student%20Simulation%20Lab/nozzle",
+  },
+  {
+    title: "Flat Plate",
+    description: "Investigate boundary-layer development.",
+    href: "/physics/Student%20Simulation%20Lab/flat-plate",
+  },
+  {
+    title: "NACA 0012",
+    description: "Explore airflow around an aerofoil.",
+    href: "/physics/Student%20Simulation%20Lab/naca0012",
+  },
+  {
+    title: "Dam Break",
+    description: "Observe the motion of fluid after a dam breaks.",
+    href: "/physics/Student%20Simulation%20Lab/dam-break",
+  },
+  {
+    title: "Magic Fluids",
+    description: "Explore interactive fluid behaviour.",
+    href: "/physics/Student%20Simulation%20Lab/magic-fluids",
+  },
 ];
 
 export default function StudentSimulationLab() {
-const [search, setSearch] = useState("");
-const [category, setCategory] = useState("All");
-
-const categories = [
-"All",
-...new Set(experiments.map((item) => item.category)),
-];
-
-const filteredExperiments = experiments.filter((item) => {
-const searchTerm = search.toLowerCase().trim();
-
-const matchesSearch =
-  item.title.toLowerCase().includes(searchTerm) ||
-  item.description.toLowerCase().includes(searchTerm) ||
-  item.category.toLowerCase().includes(searchTerm);
-
-const matchesCategory =
-  category === "All" || item.category === category;
-
-return matchesSearch && matchesCategory;
-
-});
-
-return (
-<main className="min-h-screen bg-slate-950 text-white">
-<header className="border-b border-slate-800 bg-slate-900">
-<div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5">
-<a href="/physics" className="text-xl font-bold">
-⚛ Physics Lab
-</a>
-
-      <a
-        href="/physics"
-        className="rounded-lg border border-slate-700 px-4 py-2 text-sm hover:bg-slate-800"
-      >
-        Physics Home
-      </a>
-    </div>
-  </header>
-
-  <section className="mx-auto max-w-7xl px-5 py-12">
-    <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-cyan-400">
-      Explore · Learn · Discover
-    </p>
-
-    <h1 className="mb-4 text-3xl font-extrabold md:text-5xl">
-      Student Simulation Lab
-    </h1>
-
-    <p className="mb-8 max-w-2xl leading-7 text-slate-300">
-      Choose an experiment, explore the physics, and discover
-      how changing conditions affects the results.
-    </p>
-
-    <div className="mb-8 grid gap-3 md:grid-cols-[1fr_auto]">
-      <input
-        type="search"
-        value={search}
-        onChange={(event) => setSearch(event.target.value)}
-        placeholder="Search experiments..."
-        aria-label="Search experiments"
-        className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-cyan-400"
-      />
-
-      <select
-        value={category}
-        onChange={(event) => setCategory(event.target.value)}
-        aria-label="Filter by category"
-        className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white"
-      >
-        {categories.map((item) => (
-          <option key={item} value={item}>
-            {item}
-          </option>
-        ))}
-      </select>
-    </div>
-
-    <p className="mb-5 text-sm text-slate-400">
-      {filteredExperiments.length}{" "}
-      {filteredExperiments.length === 1
-        ? "experiment"
-        : "experiments"}{" "}
-      available
-    </p>
-
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {filteredExperiments.map((experiment) => (
-        <article
-          key={experiment.title}
-          className="flex flex-col rounded-2xl border border-slate-800 bg-slate-900 p-5 transition hover:border-cyan-500"
-        >
-          <div className="mb-5 flex h-28 items-center justify-center rounded-xl bg-gradient-to-br from-blue-950 to-cyan-950 text-5xl">
-            {experiment.icon}
+  return (
+    <main className="min-h-screen bg-slate-950 px-4 py-8 text-white sm:px-8">
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold sm:text-4xl">
+              Student Simulation Lab
+            </h1>
+            <p className="mt-2 text-slate-300">
+              Choose an experiment to open its simulation.
+            </p>
           </div>
 
-          <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-cyan-400">
-            {experiment.category}
-          </p>
-
-          <h2 className="mb-3 text-xl font-bold">
-            {experiment.title}
-          </h2>
-
-          <p className="mb-6 flex-1 text-sm leading-6 text-slate-300">
-            {experiment.description}
-          </p>
-
-          <a
-            href={experiment.href}
-            className="block w-full rounded-xl bg-cyan-500 px-4 py-3 text-center font-bold text-slate-950 transition hover:bg-cyan-400"
+          <Link
+            href="/physics"
+            className="rounded-lg border border-slate-600 px-4 py-2 hover:bg-slate-800"
           >
-            Open experiment →
-          </a>
-        </article>
-      ))}
-    </div>
+            Back to Physics
+          </Link>
+        </div>
 
-    {filteredExperiments.length === 0 && (
-      <p className="rounded-xl border border-slate-800 p-6 text-slate-300">
-        No experiments match your search. Try another term or category.
-      </p>
-    )}
-  </section>
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {experiments.map((experiment) => (
+            <Link
+              key={experiment.title}
+              href={experiment.href}
+              className="group block rounded-xl border border-slate-700 bg-slate-900 p-6 transition hover:border-blue-400 hover:bg-slate-800"
+            >
+              <h2 className="text-xl font-semibold group-hover:text-blue-300">
+                {experiment.title}
+              </h2>
 
-  <footer className="border-t border-slate-800 px-5 py-6 text-center text-sm text-slate-500">
-    Physics Simulation Lab · Explore physics through experimentation
-  </footer>
-</main>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                {experiment.description}
+              </p>
 
-);
+              <span className="mt-5 inline-flex items-center gap-2 font-medium text-blue-400">
+                Open experiment
+                <span aria-hidden="true">→</span>
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </main>
+  );
 }
