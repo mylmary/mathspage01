@@ -243,7 +243,7 @@ function HeroSimulation() {
 function ExperimentCard({ experiment }) {
   return (
     <Link
-      href={`/signin?callbackUrl=${encodeURIComponent(experiment.href)}`}
+      href={experiment.href}
       className="group block overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-2 hover:border-cyan-300 hover:shadow-xl hover:shadow-blue-950/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
     >
       <SimulationVideo src={experiment.video} title={experiment.title} />
@@ -279,7 +279,7 @@ function ExperimentCard({ experiment }) {
 
         <div className="mt-5 flex items-center justify-between border-t border-slate-100 pt-4">
           <span className="text-sm font-semibold text-blue-700">
-            Sign in to explore
+            Open simulation
           </span>
           <span className="text-slate-400 transition-transform duration-300 group-hover:translate-x-1">
             →
@@ -460,7 +460,7 @@ export default function PhysicsPage() {
               </h2>
               <p className="mt-3 max-w-2xl leading-7 text-slate-600">
                 Search the library or filter by subject. Select an experiment
-                to sign in before opening its simulation.
+                to open its simulation.
               </p>
             </div>
 
@@ -537,7 +537,7 @@ export default function PhysicsPage() {
         </div>
       </section>
 
-      {/* The two new pages at the bottom */}
+      {/* Platform pages */}
       <section
         id="platform-pages"
         className="scroll-mt-24 border-t border-slate-200 bg-white py-16 sm:py-20"
