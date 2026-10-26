@@ -1,6 +1,6 @@
 
 import Link from "next/link";
-
+import AskMini from "@/components/AskMini";
 const simulations = [
   {
     title: "Flow around a cylinder",
