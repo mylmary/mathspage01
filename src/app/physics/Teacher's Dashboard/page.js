@@ -309,7 +309,7 @@ export default function PhysicsTeacherDashboard() {
           </label>
           <a
             href="/physics"
-            style={{ ...button, color: "#0f172a, textDecoration: "none" }}
+            style={{ ...button, color: "#0f172a", textDecoration: "none" }}
           >
             Open Physics page
           </a>
