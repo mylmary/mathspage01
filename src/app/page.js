@@ -305,6 +305,27 @@ export default function HomePage() {
           </p>
         </div>
       </footer>
+              {/* Keep AskMini */}
+      <AskMini />
+
+      {/* Local animation styles */}
+      <style jsx global>{`
+        @keyframes fadeInUp {
+          from {
+            opacity: 0;
+            transform: translateY(18px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        html {
+          scroll-behavior: smooth;
+        }
+      `}</style>
+    </main>
     </main>
   );
 }
