@@ -3,6 +3,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 
 const STORAGE_KEY = "physics_teacher_dashboard_v1";
 
@@ -21,6 +22,8 @@ const SIMULATIONS = [
 const NAVIGATION = [
   { id: "overview", label: "Overview", icon: "⌂" },
   { id: "simulations", label: "Simulations", icon: "◈" },
+  { id: "addSimulation", label: "Add Simulation", icon: "+" },
+  { id: "questionBank", label: "Question Bank", icon: "☷" },
   { id: "projects", label: "PINN / PINO Projects", icon: "◇" },
   { id: "planner", label: "Calendar & Planner", icon: "▦" },
   { id: "notes", label: "Teaching Notes", icon: "▤" },
@@ -33,6 +36,8 @@ const INITIAL_DATA = {
   events: [],
   notes: [],
   tasks: [],
+  customSimulations: [],
+  questionBank: [],
 };
 
 function makeId() {
@@ -122,6 +127,8 @@ export default function TeacherPage() {
     body: "",
   });
   const [taskForm, setTaskForm] = useState({ title: "" });
+  const [simulationForm, setSimulationForm] = useState({ title: "", category: "Fluid Mechanics", href: "", description: "" });
+  const [questionImporting, setQuestionImporting] = useState(false);
   const [editingNote, setEditingNote] = useState(null);
   const [editingProject, setEditingProject] = useState(null);
   const [editingEvent, setEditingEvent] = useState(null);
@@ -138,6 +145,8 @@ export default function TeacherPage() {
           events: Array.isArray(parsed.events) ? parsed.events : [],
           notes: Array.isArray(parsed.notes) ? parsed.notes : [],
           tasks: Array.isArray(parsed.tasks) ? parsed.tasks : [],
+          customSimulations: Array.isArray(parsed.customSimulations) ? parsed.customSimulations : [],
+          questionBank: Array.isArray(parsed.questionBank) ? parsed.questionBank : [],
         });
       }
     } catch (error) {
@@ -275,13 +284,81 @@ export default function TeacherPage() {
     setTaskForm({ title: "" });
   }
 
+  function addSimulation(event) {
+    event.preventDefault();
+    const title = simulationForm.title.trim();
+    const href = simulationForm.href.trim();
+    if (!title || !href) return;
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(href, window.location.origin);
+    } catch {
+      window.alert("Enter a valid simulation URL.");
+      return;
+    }
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      window.alert("The simulation link must use HTTP or HTTPS.");
+      return;
+    }
+    updateData("customSimulations", (items) => [
+      { id: makeId(), title, category: simulationForm.category, href: parsedUrl.href, description: simulationForm.description.trim(), createdAt: new Date().toISOString() },
+      ...items,
+    ]);
+    setSimulationForm({ title: "", category: "Fluid Mechanics", href: "", description: "" });
+    setMessage("Simulation link added locally");
+  }
+
+  function normalizeHeader(value) {
+    return String(value ?? "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+  }
+
+  async function importQuestions(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setQuestionImporting(true);
+    try {
+      const bytes = await file.arrayBuffer();
+      const workbook = XLSX.read(bytes, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      if (!firstSheet) throw new Error("The workbook has no worksheet.");
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+      if (!rows.length) throw new Error("The first worksheet contains no question rows.");
+      const questions = rows.map((row, index) => {
+        const normalized = {};
+        for (const [key, value] of Object.entries(row)) normalized[normalizeHeader(key)] = String(value ?? "").trim();
+        const question = normalized.question || normalized.questiontext;
+        const options = [normalized.option1, normalized.option2, normalized.option3, normalized.option4];
+        const correctAnswer = normalized.correctanswer;
+        const explanation = normalized.explanation || "";
+        if (!question || options.some((option) => !option) || !correctAnswer) {
+          throw new Error(`Row ${index + 2} is missing a question, one or more options, or correctAnswer.`);
+        }
+        if (!options.some((option) => option.toLowerCase() === correctAnswer.toLowerCase())) {
+          throw new Error(`Row ${index + 2}: correctAnswer must exactly match one of option1–option4.`);
+        }
+        return { id: makeId(), question, option1: options[0], option2: options[1], option3: options[2], option4: options[3], correctAnswer, explanation };
+      });
+      const replace = window.confirm(`Read ${questions.length} valid questions. Replace the question set currently saved in this teacher browser? This does not automatically update questions inside separate simulation pages or other users' devices.`);
+      if (replace) {
+        updateData("questionBank", questions);
+        setMessage(`${questions.length} questions imported locally`);
+        window.alert(`Imported ${questions.length} questions into the teacher workspace.`);
+      }
+    } catch (error) {
+      window.alert(`Could not import questions: ${error.message}`);
+    } finally {
+      setQuestionImporting(false);
+      event.target.value = "";
+    }
+  }
+
   function exportBackup() {
     const blob = new Blob(
       [
         JSON.stringify(
           {
             format: "ReactFlow3D teacher workspace",
-            version: 1,
+            version: 2,
             exportedAt: new Date().toISOString(),
             data,
           },
@@ -326,6 +403,8 @@ export default function TeacherPage() {
           events: imported.events,
           notes: imported.notes,
           tasks: imported.tasks,
+          customSimulations: Array.isArray(imported.customSimulations) ? imported.customSimulations : [],
+          questionBank: Array.isArray(imported.questionBank) ? imported.questionBank : [],
         });
         setMessage("Backup imported");
       }
@@ -613,6 +692,8 @@ export default function TeacherPage() {
                   <Link
                     key={simulation.href}
                     href={simulation.href}
+                    target={simulation.href.startsWith("http") && !simulation.href.startsWith(window.location.origin) ? "_blank" : undefined}
+                    rel={simulation.href.startsWith("http") && !simulation.href.startsWith(window.location.origin) ? "noreferrer" : undefined}
                     className="group rounded-xl border border-slate-200 bg-white p-5 transition hover:-translate-y-1 hover:border-cyan-400 hover:shadow-md"
                   >
                     <div className="flex items-center justify-between gap-3">
@@ -632,6 +713,77 @@ export default function TeacherPage() {
                     </p>
                   </Link>
                 ))}
+              </div>
+            </>
+          )}
+
+          {ready && activeTab === "addSimulation" && (
+            <>
+              <SectionTitle eyebrow="Experiment library" title="Add a simulation" description="Register a simulation by its published URL so it appears in this teacher dashboard. This form stores the link in this browser; it does not upload project files to your server or publish it to other devices." />
+              <Panel>
+                <form onSubmit={addSimulation} className="space-y-4">
+                  <Field label="Simulation title">
+                    <input className={inputClass} value={simulationForm.title} onChange={(e) => setSimulationForm({ ...simulationForm, title: e.target.value })} placeholder="e.g. Heat Transfer in a Plate" required />
+                  </Field>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Category">
+                      <select className={inputClass} value={simulationForm.category} onChange={(e) => setSimulationForm({ ...simulationForm, category: e.target.value })}>
+                        <option>Fluid Mechanics</option><option>Compressible Flow</option><option>Aerodynamics</option><option>Heat Transfer</option><option>Free-Surface Flow</option><option>Other</option>
+                      </select>
+                    </Field>
+                    <Field label="Published simulation URL">
+                      <input className={inputClass} type="url" value={simulationForm.href} onChange={(e) => setSimulationForm({ ...simulationForm, href: e.target.value })} placeholder="https://… or /physics/your-route" required />
+                    </Field>
+                  </div>
+                  <Field label="Description (optional)">
+                    <textarea className={`${inputClass} min-h-24 resize-y`} value={simulationForm.description} onChange={(e) => setSimulationForm({ ...simulationForm, description: e.target.value })} rows={3} placeholder="What will students investigate?" />
+                  </Field>
+                  <button type="submit" className={buttonClass}>Add simulation link →</button>
+                </form>
+              </Panel>
+              <Panel className="mt-5">
+                <h3 className="font-bold">Added simulation links ({data.customSimulations.length})</h3>
+                <div className="mt-4 space-y-3">
+                  {data.customSimulations.map((simulation) => (
+                    <div key={simulation.id} className="flex flex-wrap items-start gap-3 rounded-lg border border-slate-100 p-3">
+                      <div className="min-w-0 flex-1"><p className="font-semibold">{simulation.title}</p><p className="mt-1 text-xs text-slate-500">{simulation.category} · {simulation.href}</p>{simulation.description && <p className="mt-2 text-sm text-slate-600">{simulation.description}</p>}</div>
+                      <button type="button" className={smallDanger} onClick={() => removeItem("customSimulations", simulation.id)}>Delete</button>
+                    </div>
+                  ))}
+                  {data.customSimulations.length === 0 && <EmptyState title="No added simulations" description="Add a title and a URL above." />}
+                </div>
+              </Panel>
+            </>
+          )}
+
+          {ready && activeTab === "questionBank" && (
+            <>
+              <SectionTitle eyebrow="Assessment tools" title="Multiple-choice question bank" description="Import an Excel workbook (.xlsx or .xls). The first worksheet must have question, option1, option2, option3, option4, correctAnswer, and explanation columns. Importing replaces the question set saved in this teacher workspace." />
+              <Panel>
+                <div className="rounded-xl border border-cyan-100 bg-cyan-50 p-4 text-sm leading-6 text-cyan-950">
+                  <p className="font-semibold">Required Excel columns</p>
+                  <p className="mt-1">question · option1 · option2 · option3 · option4 · correctAnswer · explanation</p>
+                  <p className="mt-2 text-xs">Each correctAnswer cell must match the text of one of the four options. The import is stored in this browser only and does not automatically replace question data inside separate simulation pages.</p>
+                </div>
+                <label className={`${secondaryButton} mt-5 cursor-pointer`}>
+                  {questionImporting ? "Importing questions…" : "Choose Excel workbook (.xlsx / .xls)"}
+                  <input className="sr-only" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" disabled={questionImporting} onChange={importQuestions} />
+                </label>
+                <p className="mt-3 text-sm text-slate-500">Current question count: <strong className="text-slate-800">{data.questionBank.length}</strong></p>
+              </Panel>
+              <div className="mt-5 space-y-3">
+                {data.questionBank.slice(0, 25).map((question, index) => (
+                  <Panel key={question.id || `${index}-${question.question}`}>
+                    <p className="text-xs font-bold uppercase tracking-wide text-cyan-700">Question {index + 1}</p>
+                    <h3 className="mt-2 font-semibold">{question.question}</h3>
+                    <ol className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2" type="A">
+                      {[question.option1, question.option2, question.option3, question.option4].map((option, optionIndex) => <li key={optionIndex} className={`rounded-lg p-2 ${option === question.correctAnswer ? "bg-emerald-50 font-semibold text-emerald-800" : "bg-slate-50"}`}>{option}</li>)}
+                    </ol>
+                    {question.explanation && <p className="mt-3 text-sm leading-6 text-slate-500">Explanation: {question.explanation}</p>}
+                  </Panel>
+                ))}
+                {data.questionBank.length > 25 && <p className="text-sm text-slate-500">Showing the first 25 questions of {data.questionBank.length} imported.</p>}
+                {data.questionBank.length === 0 && <EmptyState title="No questions imported yet" description="Choose an Excel workbook to load your question set." />}
               </div>
             </>
           )}
@@ -1009,7 +1161,8 @@ export default function TeacherPage() {
                     ["Calendar events", data.events.length],
                     ["Teaching notes", data.notes.length],
                     ["Checklist items", data.tasks.length],
-                    ["Simulations", SIMULATIONS.length],
+                    ["Simulations", SIMULATIONS.length + data.customSimulations.length],
+                    ["Imported questions", data.questionBank.length],
                   ].map(([label, value]) => (
                     <div key={label} className="flex items-center justify-between py-3 text-sm">
                       <span className="text-slate-600">{label}</span>
