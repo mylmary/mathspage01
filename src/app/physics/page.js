@@ -3,7 +3,6 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import AskMini from "@/components/AskMini";
 
 const EXPERIMENTS = [
   {
@@ -567,7 +566,7 @@ export default function PhysicsPage() {
             <PlatformPageCard
               title="Student Simulation Lab"
               description="Enter the student laboratory and explore simulations."
-              href="/physics/lab"
+              href="/physics/student"
               icon="⚛"
             />
           </div>
@@ -589,27 +588,6 @@ export default function PhysicsPage() {
           </Link>
         </div>
       </footer>
-
-      {/* Keep AskMini */}
-      <AskMini />
-
-      {/* Local animation styles */}
-      <style jsx global>{`
-        @keyframes fadeInUp {
-          from {
-            opacity: 0;
-            transform: translateY(18px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        html {
-          scroll-behavior: smooth;
-        }
-      `}</style>
     </main>
   );
 }
